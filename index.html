@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест: реальное или сгенерированное? (SVHN)</title>
+    <script src="https://unpkg.com/unzipit@1.4.0/dist/unzipit.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f0f2f5;
+        }
+        .container {
+            background: white;
+            border-radius: 24px;
+            padding: 20px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+        h1 { text-align: center; color: #1e3c72; margin-top: 0; }
+        .progress-bar {
+            width: 100%;
+            background: #e0e0e0;
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            width: 0%;
+            height: 20px;
+            background: #4caf50;
+            transition: width 0.3s;
+        }
+        .status { text-align: center; font-size: 1.1rem; margin: 15px 0; color: #555; }
+        .setup-panel { text-align: center; margin: 20px 0; }
+        .setup-panel select, .setup-panel button {
+            font-size: 1rem;
+            padding: 8px 16px;
+            margin: 5px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+        }
+        .setup-panel button {
+            background: #1e3c72;
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+        .setup-panel button:hover { background: #0f2b4f; }
+        .game-area { text-align: center; }
+        .images-row {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        .image-card {
+            cursor: pointer;
+            border-radius: 16px;
+            padding: 10px;
+            background: #fafafa;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .image-card:hover { transform: scale(1.02); }
+        .image-card img {
+            width: 220px;
+            height: 220px;
+            object-fit: contain;
+            background: #eef;
+            border-radius: 12px;
+        }
+        .caption { margin-top: 8px; font-weight: bold; color: #333; }
+        .progress-text { font-size: 1.2rem; font-weight: bold; margin: 15px 0; }
+        .feedback { font-size: 1.2rem; margin: 10px 0; min-height: 3rem; }
+        .result {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            background: #e8f0fe;
+            border-radius: 20px;
+        }
+        .accuracy { font-size: 2.2rem; font-weight: bold; color: #1e88e5; }
+        .small-note { font-size: 0.85rem; color: #555; margin-top: 15px; }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        footer { text-align: center; margin-top: 30px; font-size: 0.8rem; color: #888; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🎨 Реальное или сгенерированное?</h1>
+    <div id="loadingArea">
+        <div class="progress-bar"><div id="loadProgress" class="progress-fill"></div></div>
+        <div id="statusMsg" class="status">Загрузка архивов...</div>
+    </div>
+    <div id="setupPanel" class="setup-panel" style="display:none;">
+        <label for="questionCount">Количество вопросов:</label>
+        <select id="questionCount">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="20">20</option>
+            <option value="30">30</option>
+        </select>
+        <button id="startBtn">▶ Начать тест</button>
+    </div>
+    <div id="gameArea" class="game-area" style="display:none;"></div>
+    <div id="resultArea" style="display:none;"></div>
+</div>
+<footer>Изображения: реальные (SVHN) и сгенерированные диффузионной моделью (32×32 RGB).<br>Архивы загружаются с сервера.</footer>
+
+<script>
+    // ================= НАСТРОЙКИ =================
+    const REAL_ZIP_URL = 'svhn_real.zip';                 // имя вашего архива с реальными изображениями
+    const GEN_ZIP_URL  = 'generated_svhn_images.zip';    // имя архива со сгенерированными
+    const PAIRS_PER_CLASS = 20;   // сколько пар на класс (макс 40, но 20 - быстро и достаточно)
+    // =============================================
+
+    let realFiles = [];      // массив {name, blob, classId}
+    let genFiles = [];
+    let questions = [];      // массив {real: {...}, gen: {...}, class}
+    let sessionQuestions = [];
+    let leftIsGen = [];
+    let userAnswers = [];
+    let currentIndex = 0;
+    let canAnswer = true;
+    let selectedCount = 10;
+
+    // Извлечение класса из имени файла
+    function getClassFromFilename(filename) {
+        const match = filename.match(/class_(\d+)/);
+        if (match) {
+            const id = parseInt(match[1]);
+            if (id >= 0 && id <= 9) return id;
+        }
+        return -1;
+    }
+
+    // Распаковка ZIP и сбор информации о файлах
+    async function loadZip(zipUrl, isReal, progressWeight, onProgress) {
+        const resp = await fetch(zipUrl);
+        if (!resp.ok) throw new Error(`Не удалось загрузить ${zipUrl} (HTTP ${resp.status})`);
+        const blob = await resp.blob();
+        const { entries } = await unzipit.unzip(blob);
+        const files = [];
+        let count = 0;
+        const total = Object.keys(entries).length;
+        for (const [name, entry] of Object.entries(entries)) {
+            if (entry.isDirectory) continue;
+            if (!name.toLowerCase().endsWith('.png')) continue;
+            const classId = getClassFromFilename(name);
+            if (classId !== -1) {
+                const blobData = await entry.blob();
+                files.push({ name, blob: blobData, classId });
+            }
+            count++;
+            if (onProgress) onProgress(progressWeight * (count / total));
+        }
+        return files;
+    }
+
+    // Перемешивание массива
+    function shuffleArray(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+    }
+
+    // Формирование вопросов (пары реальное + сгенерированное одного класса)
+    function buildQuestions(realArr, genArr, pairsPerClass) {
+        const byClassReal = Array(10).fill().map(() => []);
+        const byClassGen  = Array(10).fill().map(() => []);
+        for (const r of realArr) byClassReal[r.classId].push(r);
+        for (const g of genArr)  byClassGen[g.classId].push(g);
+
+        const questionsList = [];
+        for (let c = 0; c < 10; c++) {
+            const realList = byClassReal[c];
+            const genList  = byClassGen[c];
+            const n = Math.min(pairsPerClass, realList.length, genList.length);
+            if (n === 0) continue;
+            // берём случайные n реальных и n сгенерированных
+            const shuffledReal = [...realList]; shuffleArray(shuffledReal);
+            const shuffledGen  = [...genList]; shuffleArray(shuffledGen);
+            for (let i = 0; i < n; i++) {
+                questionsList.push({
+                    real: shuffledReal[i],
+                    gen: shuffledGen[i],
+                    class: c
+                });
+            }
+        }
+        shuffleArray(questionsList);
+        return questionsList;
+    }
+
+    // Преобразование Blob в URL для <img>
+    function blobToUrl(blob) {
+        return URL.createObjectURL(blob);
+    }
+
+    // --- ЗАГРУЗКА АРХИВОВ ---
+    let loadProgress = 0;
+    const updateProgress = (increment) => {
+        loadProgress += increment;
+        const percent = Math.min(100, loadProgress * 100);
+        document.getElementById('loadProgress').style.width = percent + '%';
+        document.getElementById('statusMsg').innerHTML = `Загрузка: ${Math.floor(percent)}%`;
+    };
+
+    window.onload = async () => {
+        try {
+            updateProgress(0);
+            // Загружаем реальные (вес 50%)
+            const realFilesList = await loadZip(REAL_ZIP_URL, true, 0.5, (p) => updateProgress(p * 0.5));
+            realFiles = realFilesList;
+            updateProgress(0.5);
+            document.getElementById('statusMsg').innerHTML = `Загружено реальных: ${realFiles.length}`;
+
+            // Загружаем сгенерированные (ещё 50%)
+            const genFilesList = await loadZip(GEN_ZIP_URL, false, 0.5, (p) => updateProgress(0.5 + p * 0.5));
+            genFiles = genFilesList;
+            updateProgress(1.0);
+            document.getElementById('statusMsg').innerHTML = `Готово! Реальных: ${realFiles.length}, сгенерированных: ${genFiles.length}`;
+
+            // Формируем вопросы
+            questions = buildQuestions(realFiles, genFiles, PAIRS_PER_CLASS);
+            console.log(`Сформировано ${questions.length} вопросов`);
+
+            if (questions.length === 0) {
+                throw new Error('Не удалось создать вопросы. Проверьте, что в именах файлов есть "class_<цифра>" (например, class_5_001.png).');
+            }
+
+            // Прячем индикатор загрузки, показываем панель выбора
+            document.getElementById('loadingArea').style.display = 'none';
+            document.getElementById('setupPanel').style.display = 'block';
+            document.getElementById('startBtn').disabled = false;
+        } catch (err) {
+            document.getElementById('statusMsg').innerHTML = `❌ Ошибка: ${err.message}`;
+            console.error(err);
+        }
+    };
+
+    // --- ТЕСТ ---
+    function startTest() {
+        const countSelect = document.getElementById('questionCount');
+        selectedCount = parseInt(countSelect.value);
+        if (questions.length < selectedCount) {
+            alert(`Недостаточно вопросов. Доступно ${questions.length}, запрошено ${selectedCount}.`);
+            return;
+        }
+        const shuffledAll = [...questions];
+        shuffleArray(shuffledAll);
+        sessionQuestions = shuffledAll.slice(0, selectedCount);
+        leftIsGen = sessionQuestions.map(() => Math.random() < 0.5);
+        userAnswers = new Array(selectedCount).fill(null);
+        currentIndex = 0;
+        canAnswer = true;
+
+        document.getElementById('setupPanel').style.display = 'none';
+        document.getElementById('gameArea').style.display = 'block';
+        document.getElementById('resultArea').style.display = 'none';
+        renderQuestion();
+    }
+
+    function renderQuestion() {
+        const q = sessionQuestions[currentIndex];
+        const isGenLeft = leftIsGen[currentIndex];
+        const leftBlob = isGenLeft ? q.gen.blob : q.real.blob;
+        const rightBlob = isGenLeft ? q.real.blob : q.gen.blob;
+        const leftLabel = isGenLeft ? "Сгенерированное?" : "Реальное?";
+        const rightLabel = isGenLeft ? "Реальное?" : "Сгенерированное?";
+
+        const leftUrl = blobToUrl(leftBlob);
+        const rightUrl = blobToUrl(rightBlob);
+
+        const gameHtml = `
+            <div class="progress-text">Вопрос ${currentIndex+1} из ${selectedCount} | Класс цифры: ${q.class}</div>
+            <div class="images-row">
+                <div class="image-card" id="leftCard">
+                    <img src="${leftUrl}" alt="левое">
+                    <div class="caption">${leftLabel}</div>
+                </div>
+                <div class="image-card" id="rightCard">
+                    <img src="${rightUrl}" alt="правое">
+                    <div class="caption">${rightLabel}</div>
+                </div>
+            </div>
+            <div class="feedback" id="feedback"></div>
+        `;
+        document.getElementById('gameArea').innerHTML = gameHtml;
+        document.getElementById('leftCard').addEventListener('click', () => handleAnswer(true));
+        document.getElementById('rightCard').addEventListener('click', () => handleAnswer(false));
+    }
+
+    function handleAnswer(clickedLeft) {
+        if (!canAnswer) return;
+        canAnswer = false;
+
+        const isGenLeft = leftIsGen[currentIndex];
+        const correct = (clickedLeft && isGenLeft) || (!clickedLeft && !isGenLeft);
+        userAnswers[currentIndex] = correct;
+
+        const leftCard = document.getElementById('leftCard');
+        const rightCard = document.getElementById('rightCard');
+        const fbDiv = document.getElementById('feedback');
+
+        if (correct) {
+            fbDiv.innerHTML = '✅ Верно!';
+            if (clickedLeft) leftCard.style.border = '3px solid green';
+            else rightCard.style.border = '3px solid green';
+        } else {
+            fbDiv.innerHTML = '❌ Неверно!';
+            if (clickedLeft) leftCard.style.border = '3px solid red';
+            else rightCard.style.border = '3px solid red';
+        }
+
+        setTimeout(() => {
+            if (currentIndex + 1 < selectedCount) {
+                currentIndex++;
+                canAnswer = true;
+                renderQuestion();
+            } else {
+                finishTest();
+            }
+        }, 800);
+    }
+
+    function binomial(n, k) {
+        let coeff = 1;
+        for (let i = 1; i <= k; i++) coeff *= (n - k + i) / i;
+        return coeff;
+    }
+
+    function finishTest() {
+        const correctCount = userAnswers.filter(a => a === true).length;
+        const accuracy = (correctCount / selectedCount) * 100;
+        const probRandom = binomial(selectedCount, correctCount) * Math.pow(0.5, selectedCount);
+        const probPercent = (probRandom * 100).toFixed(6);
+
+        const resultHtml = `
+            <div class="result">
+                <div>🎯 Ваш результат:</div>
+                <div class="accuracy">${correctCount} / ${selectedCount} (${accuracy.toFixed(1)}%)</div>
+                <div>📊 Вероятность угадать ${correctCount} из ${selectedCount} случайно: <strong>${probPercent}%</strong></div>
+                <div class="small-note">* C(${selectedCount}, ${correctCount}) × (0.5)^${selectedCount} = ${probRandom.toExponential(4)}</div>
+                <button id="restartBtn" style="margin-top:20px; padding:8px 20px;">🔄 Пройти заново</button>
+            </div>
+        `;
+        document.getElementById('gameArea').style.display = 'none';
+        document.getElementById('resultArea').innerHTML = resultHtml;
+        document.getElementById('resultArea').style.display = 'block';
+        document.getElementById('restartBtn').addEventListener('click', () => {
+            document.getElementById('setupPanel').style.display = 'block';
+            document.getElementById('resultArea').style.display = 'none';
+        });
+    }
+
+    document.getElementById('startBtn').addEventListener('click', startTest);
+</script>
+</body>
+</html>
