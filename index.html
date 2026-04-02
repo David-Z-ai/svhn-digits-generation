@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Тест: реальное или сгенерированное? (SVHN)</title>
+    <title>Тест: выберите сгенерированное изображение (SVHN)</title>
     <script src="https://unpkg.com/unzipit@1.4.0/dist/unzipit.js"></script>
     <style>
         * { box-sizing: border-box; }
@@ -51,6 +51,16 @@
         }
         .setup-panel button:hover { background: #0f2b4f; }
         .game-area { text-align: center; }
+        .instruction {
+            font-size: 1.2rem;
+            background: #e3f2fd;
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 40px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            color: #0d47a1;
+        }
         .images-row {
             display: flex;
             justify-content: center;
@@ -65,16 +75,22 @@
             background: #fafafa;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             transition: transform 0.2s;
+            width: 250px;
         }
-        .image-card:hover { transform: scale(1.02); }
+        .image-card:hover { transform: scale(1.02); background: #f0f0f0; }
         .image-card img {
-            width: 220px;
-            height: 220px;
+            width: 200px;
+            height: 200px;
             object-fit: contain;
             background: #eef;
             border-radius: 12px;
         }
-        .caption { margin-top: 8px; font-weight: bold; color: #333; }
+        .card-label {
+            margin-top: 8px;
+            font-weight: bold;
+            color: #555;
+            font-size: 0.9rem;
+        }
         .progress-text { font-size: 1.2rem; font-weight: bold; margin: 15px 0; }
         .feedback { font-size: 1.2rem; margin: 10px 0; min-height: 3rem; }
         .result {
@@ -92,7 +108,7 @@
 </head>
 <body>
 <div class="container">
-    <h1>🎨 Реальное или сгенерированное?</h1>
+    <h1>🎨 Выберите сгенерированное изображение</h1>
     <div id="loadingArea">
         <div class="progress-bar"><div id="loadProgress" class="progress-fill"></div></div>
         <div id="statusMsg" class="status">Загрузка архивов...</div>
@@ -110,18 +126,18 @@
     <div id="gameArea" class="game-area" style="display:none;"></div>
     <div id="resultArea" style="display:none;"></div>
 </div>
-<footer>Изображения: реальные (SVHN) и сгенерированные диффузионной моделью (32×32 RGB).<br>Архивы загружаются с сервера.</footer>
+<footer>Реальные изображения (SVHN) и сгенерированные диффузионной моделью (32×32 RGB).<br>Нажмите на изображение, которое, по вашему мнению, было создано искусственным интеллектом.</footer>
 
 <script>
     // ================= НАСТРОЙКИ =================
-    const REAL_ZIP_URL = 'svhn_real.zip';                 // имя вашего архива с реальными изображениями
-    const GEN_ZIP_URL  = 'generated_svhn_images.zip';    // имя архива со сгенерированными
-    const PAIRS_PER_CLASS = 20;   // сколько пар на класс (макс 40, но 20 - быстро и достаточно)
+    const REAL_ZIP_URL = 'svhn_real.zip';
+    const GEN_ZIP_URL  = 'generated_svhn_images.zip';
+    const PAIRS_PER_CLASS = 20;
     // =============================================
 
-    let realFiles = [];      // массив {name, blob, classId}
+    let realFiles = [];
     let genFiles = [];
-    let questions = [];      // массив {real: {...}, gen: {...}, class}
+    let questions = [];
     let sessionQuestions = [];
     let leftIsGen = [];
     let userAnswers = [];
@@ -129,7 +145,6 @@
     let canAnswer = true;
     let selectedCount = 10;
 
-    // Извлечение класса из имени файла
     function getClassFromFilename(filename) {
         const match = filename.match(/class_(\d+)/);
         if (match) {
@@ -139,8 +154,7 @@
         return -1;
     }
 
-    // Распаковка ZIP и сбор информации о файлах
-    async function loadZip(zipUrl, isReal, progressWeight, onProgress) {
+    async function loadZip(zipUrl, progressWeight, onProgress) {
         const resp = await fetch(zipUrl);
         if (!resp.ok) throw new Error(`Не удалось загрузить ${zipUrl} (HTTP ${resp.status})`);
         const blob = await resp.blob();
@@ -162,7 +176,6 @@
         return files;
     }
 
-    // Перемешивание массива
     function shuffleArray(arr) {
         for (let i = arr.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -170,7 +183,6 @@
         }
     }
 
-    // Формирование вопросов (пары реальное + сгенерированное одного класса)
     function buildQuestions(realArr, genArr, pairsPerClass) {
         const byClassReal = Array(10).fill().map(() => []);
         const byClassGen  = Array(10).fill().map(() => []);
@@ -183,7 +195,6 @@
             const genList  = byClassGen[c];
             const n = Math.min(pairsPerClass, realList.length, genList.length);
             if (n === 0) continue;
-            // берём случайные n реальных и n сгенерированных
             const shuffledReal = [...realList]; shuffleArray(shuffledReal);
             const shuffledGen  = [...genList]; shuffleArray(shuffledGen);
             for (let i = 0; i < n; i++) {
@@ -198,12 +209,10 @@
         return questionsList;
     }
 
-    // Преобразование Blob в URL для <img>
     function blobToUrl(blob) {
         return URL.createObjectURL(blob);
     }
 
-    // --- ЗАГРУЗКА АРХИВОВ ---
     let loadProgress = 0;
     const updateProgress = (increment) => {
         loadProgress += increment;
@@ -215,27 +224,23 @@
     window.onload = async () => {
         try {
             updateProgress(0);
-            // Загружаем реальные (вес 50%)
-            const realFilesList = await loadZip(REAL_ZIP_URL, true, 0.5, (p) => updateProgress(p * 0.5));
+            const realFilesList = await loadZip(REAL_ZIP_URL, 0.5, (p) => updateProgress(p * 0.5));
             realFiles = realFilesList;
             updateProgress(0.5);
             document.getElementById('statusMsg').innerHTML = `Загружено реальных: ${realFiles.length}`;
 
-            // Загружаем сгенерированные (ещё 50%)
-            const genFilesList = await loadZip(GEN_ZIP_URL, false, 0.5, (p) => updateProgress(0.5 + p * 0.5));
+            const genFilesList = await loadZip(GEN_ZIP_URL, 0.5, (p) => updateProgress(0.5 + p * 0.5));
             genFiles = genFilesList;
             updateProgress(1.0);
             document.getElementById('statusMsg').innerHTML = `Готово! Реальных: ${realFiles.length}, сгенерированных: ${genFiles.length}`;
 
-            // Формируем вопросы
             questions = buildQuestions(realFiles, genFiles, PAIRS_PER_CLASS);
             console.log(`Сформировано ${questions.length} вопросов`);
 
             if (questions.length === 0) {
-                throw new Error('Не удалось создать вопросы. Проверьте, что в именах файлов есть "class_<цифра>" (например, class_5_001.png).');
+                throw new Error('Не удалось создать вопросы. Проверьте имена файлов (должны содержать class_<цифра>).');
             }
 
-            // Прячем индикатор загрузки, показываем панель выбора
             document.getElementById('loadingArea').style.display = 'none';
             document.getElementById('setupPanel').style.display = 'block';
             document.getElementById('startBtn').disabled = false;
@@ -245,7 +250,6 @@
         }
     };
 
-    // --- ТЕСТ ---
     function startTest() {
         const countSelect = document.getElementById('questionCount');
         selectedCount = parseInt(countSelect.value);
@@ -272,22 +276,21 @@
         const isGenLeft = leftIsGen[currentIndex];
         const leftBlob = isGenLeft ? q.gen.blob : q.real.blob;
         const rightBlob = isGenLeft ? q.real.blob : q.gen.blob;
-        const leftLabel = isGenLeft ? "Сгенерированное?" : "Реальное?";
-        const rightLabel = isGenLeft ? "Реальное?" : "Сгенерированное?";
 
         const leftUrl = blobToUrl(leftBlob);
         const rightUrl = blobToUrl(rightBlob);
 
         const gameHtml = `
-            <div class="progress-text">Вопрос ${currentIndex+1} из ${selectedCount} | Класс цифры: ${q.class}</div>
+            <div class="instruction">🔍 Какое изображение сгенерировано нейросетью? Нажмите на него.</div>
+            <div class="progress-text">Вопрос ${currentIndex+1} из ${selectedCount} | Цифра: ${q.class}</div>
             <div class="images-row">
                 <div class="image-card" id="leftCard">
-                    <img src="${leftUrl}" alt="левое">
-                    <div class="caption">${leftLabel}</div>
+                    <img src="${leftUrl}" alt="Изображение A">
+                    <div class="card-label">Слева</div>
                 </div>
                 <div class="image-card" id="rightCard">
-                    <img src="${rightUrl}" alt="правое">
-                    <div class="caption">${rightLabel}</div>
+                    <img src="${rightUrl}" alt="Изображение B">
+                    <div class="card-label">Справа</div>
                 </div>
             </div>
             <div class="feedback" id="feedback"></div>
@@ -310,11 +313,11 @@
         const fbDiv = document.getElementById('feedback');
 
         if (correct) {
-            fbDiv.innerHTML = '✅ Верно!';
+            fbDiv.innerHTML = '✅ Верно! Вы выбрали сгенерированное изображение.';
             if (clickedLeft) leftCard.style.border = '3px solid green';
             else rightCard.style.border = '3px solid green';
         } else {
-            fbDiv.innerHTML = '❌ Неверно!';
+            fbDiv.innerHTML = '❌ Неверно. Попробуйте ещё раз в следующем вопросе.';
             if (clickedLeft) leftCard.style.border = '3px solid red';
             else rightCard.style.border = '3px solid red';
         }
