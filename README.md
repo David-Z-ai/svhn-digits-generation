@@ -11,13 +11,25 @@
 👉 [Отличить ИИ от реальных номеров](https://david-z-ai.github.io/svhn-digits-generation/)
 
 ## Реальные (оригиналы SVHN)
-![](preview_images/real/image_0046_class_1.png) ![](preview_images/real/image_0164_class_4.png) ![](preview_images/real/image_0360_class_9.png)
+<div style="display: flex; gap: 10px;">
+  <img src="preview_images/real/image_0046_class_1.png" width="200" />
+  <img src="preview_images/real/image_0164_class_4.png" width="200" />
+  <img src="preview_images/real/image_0360_class_9.png" width="200" />
+</div>
 
 ## VAE (реконструкция)
-![](screenshots/vae1.png) ![](screenshots/vae2.png) ![](screenshots/vae3.png)
+<div style="display: flex; gap: 10px;">
+  <img src="screenshots/vae1.png" width="200" />
+  <img src="screenshots/vae2.png" width="200" />
+  <img src="screenshots/vae3.png" width="200" />
+</div>
 
 ## Диффузия (генерация)
-![](preview_images/diffusion/image_0040_class_1.png) ![](preview_images/diffusion/image_0164_class_4.png) ![](preview_images/diffusion/image_0397_class_9.png)
+<div style="display: flex; gap: 10px;">
+  <img src="preview_images/diffusion/image_0040_class_1.png" width="200" />
+  <img src="preview_images/diffusion/image_0164_class_4.png" width="200" />
+  <img src="preview_images/diffusion/image_0397_class_9.png" width="200" />
+</div>
 
 ## Быстрый старт
 
