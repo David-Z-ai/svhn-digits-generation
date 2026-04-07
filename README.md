@@ -10,13 +10,13 @@
 
 👉 [Отличить ИИ от реальных номеров](https://david-z-ai.github.io/svhn-digits-generation/)
 
-### Реальные (оригиналы SVHN)
+## Реальные (оригиналы SVHN)
 ![](screenshots/real1.png) ![](screenshots/real2.png) ![](screenshots/real3.png)
 
-### VAE (реконструкция)
+## VAE (реконструкция)
 ![](screenshots/vae1.png) ![](screenshots/vae2.png) ![](screenshots/vae3.png)
 
-### Диффузия (генерация)
+## Диффузия (генерация)
 ![](screenshots/diff1.png) ![](screenshots/diff2.png) ![](screenshots/diff3.png)
 
 ## Быстрый старт
