@@ -10,24 +10,14 @@
 
 👉 [Отличить ИИ от реальных номеров](https://david-z-ai.github.io/svhn-digits-generation/)
 
-## Результаты
+### Реальные (оригиналы SVHN)
+![](screenshots/real1.png) ![](screenshots/real2.png) ![](screenshots/real3.png)
 
-| Модель       | FID     | Параметры | Время генерации 1000 img |
-|--------------|---------|-----------|--------------------------|
-| VAE          | 45.2    | 12M       | 2 секунды                |
-| Diffusion    | 18.7    | 35M       | 2 минуты                 |
+### VAE (реконструкция)
+![](screenshots/vae1.png) ![](screenshots/vae2.png) ![](screenshots/vae3.png)
 
-**Примеры:**
-
-| Оригинал (SVHN) | Реконструкция VAE | Генерация диффузией |
-|----------------|-------------------|---------------------|
-| ![](screenshots/real.png) | ![](screenshots/vae_rec.png) | ![](screenshots/diff_gen.png) |
-
-## Тест "Угадай ИИ"
-
-Открой файл `test_ai/index.html` в браузере. Тебе покажут 10 картинок (половина реальных, половина сгенерированных). Угадай, какие нарисовала нейросеть.
-
-![](screenshots/test_preview.png)
+### Диффузия (генерация)
+![](screenshots/diff1.png) ![](screenshots/diff2.png) ![](screenshots/diff3.png)
 
 ## Быстрый старт
 
