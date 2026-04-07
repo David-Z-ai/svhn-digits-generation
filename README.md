@@ -55,6 +55,6 @@ Done.
 ```
 # Другие примеры:
 ```
-generate_diffusion.py --class 0 --num 50 --out_dir my_digits   # 50 изображений цифры 0 в папку my_digits
-generate_diffusion.py --class 5 --num 10 --device cpu          # на CPU
+python generate_diffusion.py --class 0 --num 50 --out_dir my_digits   # 50 изображений цифры 0 в папку my_digits
+python generate_diffusion.py --class 5 --num 10 --device cpu          # на CPU
 ```
