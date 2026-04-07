@@ -32,8 +32,11 @@
 </div>
 
 # Клонировать репозиторий
+```
 git clone https://github.com/David-Z-ai/svhn-digits-generation.git
 cd svhn-digits-generation
-
+```
 # Установить зависимости
+```
 pip install -r requirements.txt
+```
