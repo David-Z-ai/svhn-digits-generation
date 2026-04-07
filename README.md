@@ -32,11 +32,23 @@
 </div>
 
 # Клонировать репозиторий
-```
 git clone https://github.com/David-Z-ai/svhn-digits-generation.git
 cd svhn-digits-generation
-```
+
 # Установить зависимости
-```
 pip install -r requirements.txt
-```
+
+# Сгенерировать 3 изображения цифры 7
+python generate_diffusion.py --class 7 --num 3
+
+# Результат: сгенерированные PNG сохранятся в папку generated/
+# В консоли отобразится прогресс и пути к файлам:
+# Sampling: 1000it [00:07, 138.35it/s]
+# Saved: generated/class_7_0000.png
+# Saved: generated/class_7_0001.png
+# Saved: generated/class_7_0002.png
+# Done.
+
+# Другие примеры:
+# python generate_diffusion.py --class 0 --num 50 --out_dir my_digits   # 50 изображений цифры 0 в папку my_digits
+# python generate_diffusion.py --class 5 --num 10 --device cpu          # на CPU
