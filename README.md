@@ -31,24 +31,9 @@
   <img src="preview_images/diffusion/image_0397_class_9.png" width="200" />
 </div>
 
-## Быстрый старт
+# Клонировать репозиторий
+git clone https://github.com/David-Z-ai/svhn-digits-generation.git
+cd svhn-digits-generation
 
-```bash
-# Клонируй репозиторий
-git clone https://github.com/[ТВОЙ_НИК]/[НАЗВАНИЕ_РЕПО].git
-cd [НАЗВАНИЕ_РЕПО]
-
-# Установи зависимости
+# Установить зависимости
 pip install -r requirements.txt
-
-# Скачай веса модели (ссылка в разделе "Скачать весы") в папку weights/
-# Или обучи сам:
-python train_vae.py
-python train_diffusion.py
-
-# Сгенерируй примеры (появятся в samples/)
-python generate.py --model diffusion --num 100 --class 5
-
-# Запусти тест локально
-cd test_ai && python -m http.server 8000
-# Открой в браузере http://localhost:8000
