@@ -41,7 +41,7 @@ cd svhn-digits-generation
 ```
 pip install -r requirements.txt
 ```
-## Сгенерировать случайные изображения с помощью VAE
+## Сгенерировать 10 изображений с помощью VAE
 ```
 python generate_vae.py --num 10
 ```
