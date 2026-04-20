@@ -17,11 +17,11 @@
   <img src="preview_images/real/image_0360_class_9.png" width="200" />
 </div>
 
-## VAE (реконструкция)
+## VAE (генерация)
 <div style="display: flex; gap: 10px;">
-  <img src="screenshots/vae1.png" width="200" />
-  <img src="screenshots/vae2.png" width="200" />
-  <img src="screenshots/vae3.png" width="200" />
+  <img src="preview_images/vae/vae_gen_001.png" width="200" />
+  <img src="preview_images/vae/vae_gen_003.png" width="200" />
+  <img src="preview_images/vae/vae_gen_009.png" width="200" />
 </div>
 
 ## Диффузия (генерация)
