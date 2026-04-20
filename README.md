@@ -31,16 +31,21 @@
   <img src="preview_images/diffusion/image_0397_class_9.png" width="200" />
 </div>
 
-# Клонировать репозиторий
+# Как использовать
+## Клонировать репозиторий
 ```
 git clone https://github.com/David-Z-ai/svhn-digits-generation.git
 cd svhn-digits-generation
 ```
-# Установить зависимости
+## Установить зависимости
 ```
 pip install -r requirements.txt
 ```
-# Сгенерировать 3 изображения цифры 7
+## Сгенерировать случайные изображения с помощью VAE
+```
+python generate_vae.py --num 10
+```
+## Сгенерировать 3 изображения цифры 7 с помощью диффузии
 ```
 python generate_diffusion.py --class 7 --num 3
 ```
@@ -53,7 +58,7 @@ Saved: generated/class_7_0001.png
 Saved: generated/class_7_0002.png
 Done.
 ```
-# Другие примеры:
+## Другие примеры:
 ```
 python generate_diffusion.py --class 0 --num 50 --out_dir my_digits   # 50 изображений цифры 0 в папку my_digits
 python generate_diffusion.py --class 5 --num 10 --device cpu          # на CPU
